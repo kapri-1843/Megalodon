@@ -1,0 +1,22 @@
+[
+  {
+    "id": 1,
+    "name": "Phone1",
+    "ip": "192.168.1.100",
+    "os": "android",
+    "port": 4444,
+    "status": "pending",
+    "added": "2026-08-31T02:07:33.422617",
+    "notes": ""
+  },
+  {
+    "id": 2,
+    "name": "samsungA16",
+    "ip": "192.168.1.8",
+    "os": "android",
+    "port": 4444,
+    "status": "pending",
+    "added": "2026-09-04T20:10:02.579105",
+    "notes": ""
+  }
+]

